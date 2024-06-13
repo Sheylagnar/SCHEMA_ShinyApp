@@ -1,10 +1,9 @@
-
 library(shiny)
 library(shinydashboard)
 library(readr)
 library(ggplot2)
 library(Giotto)
-#cargar RDATA de spatial transcriptomic 
+#cargar RDATA de spatial transcriptomic y path con setwd()
 
 # Define UI for application that draws a histogram
 
