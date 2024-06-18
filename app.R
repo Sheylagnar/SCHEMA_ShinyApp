@@ -13,7 +13,10 @@ ui <- dashboardPage(
   dashboardSidebar(
     sidebarMenu(
       menuItem("UMAP", tabName = "umap", icon = icon("th")),
-      menuItem("Gráfico 2", tabName = "tab2", icon = icon("chart-line")),
+      menuItem("Spatial Plot", icon = icon("chart-line"),
+               menuSubItem("Total", tabName = "spattotal", icon = icon("angle-right")),
+               menuSubItem("Region", tabName = "spatregion", icon = icon("angle-right"))
+    ),
       menuItem("Gráfico 3", tabName = "tab3", icon = icon("chart-pie")),
       menuItem("Gráfico 4", tabName = "tab4", icon = icon("chart-area")),
       menuItem("Gráfico 5", tabName = "tab5", icon = icon("chart-bar"))
@@ -36,9 +39,32 @@ ui <- dashboardPage(
                 )
               )
       ),
-      tabItem(tabName = "tab2",
+      tabItem(tabName = "spattotal",
               fluidRow(
-                box(plotOutput("plot2"), width = 12)
+                box(
+                  title = "SpatPlot Parameters",
+                  width = 4, status = "primary", solidHeader = TRUE,
+                  selectInput("color_by", "Color by:",
+                              choices = c("Region", "Sex", "Age", "cell_types")),
+                  actionButton("run_spattotal", "Run SpatPlot")
+                ),
+                box(title = "SpatPlot", status = "primary", solidHeader = TRUE,
+                    plotOutput("spattotalplot")
+                )
+              )
+      ),
+      tabItem(tabName = "spatregion",
+              fluidRow(
+                box(
+                  title = "SpatPlot Parameters",
+                  width = 4, status = "primary", solidHeader = TRUE,
+                  selectInput("color_by", "Color by:",
+                              choices = data_regions),
+                  actionButton("run_spatregion", "Run SpatPlot")
+                ),
+                box(title = "SpatPlot", status = "primary", solidHeader = TRUE,
+                    plotOutput("spatregionplot")
+                )
               )
       ),
       tabItem(tabName = "tab3",
@@ -78,18 +104,18 @@ server <- function(input, output) {
              point_alpha = 0.7)
   })
   
-  output$plot2 <- renderPlot({
-    req(data())
-    ggplot(data(), aes(x = Column3, y = Column4)) + 
-      geom_bar(stat = "identity") +
-      theme_minimal()
+  output$spattotalplot <- renderPlot({
+    req(input$run_spattotal)
+    spatPlot2D(gobject = filtered_sg, point_alpha = 0.7,
+               cell_color = input$color_by, show_legend = TRUE)
   })
   
-  output$plot3 <- renderPlot({
-    req(data())
-    ggplot(data(), aes(x = factor(Column5), y = Column6)) + 
-      geom_boxplot() +
-      theme_minimal()
+  output$spatregionplot <- renderPlot({
+    req(input$run_spatregion)
+    region <- input$color_by
+    region_data = region_data_list[[region]]
+    spatPlot2D(gobject = region_data, point_alpha = 0.7,
+               cell_color = 'Subregion', show_legend = TRUE)
   })
   
   output$plot4 <- renderPlot({
