@@ -17,7 +17,7 @@ ui <- dashboardPage(
                menuSubItem("Total", tabName = "spattotal", icon = icon("angle-right")),
                menuSubItem("Region", tabName = "spatregion", icon = icon("angle-right"))
     ),
-      menuItem("Gráfico 3", tabName = "tab3", icon = icon("chart-pie")),
+      menuItem("Heatmap", tabName = "tab3", icon = icon("chart-pie")),
       menuItem("Gráfico 4", tabName = "tab4", icon = icon("chart-area")),
       menuItem("Gráfico 5", tabName = "tab5", icon = icon("chart-bar"))
     ),
@@ -29,13 +29,16 @@ ui <- dashboardPage(
               fluidRow(
                 box(
                   title = "UMAP Parameters",
-                  width = 4, status = "primary", solidHeader = TRUE,
+                  width = 12, status = "primary", solidHeader = TRUE,
                   selectInput("color_by", "Color by:",
                               choices = c("Condition", "Sex", "Age", "cell_types")),
                   actionButton("run_umap", "Run UMAP")
                 ),
-                box(title = "UMAP Plot", status = "primary", solidHeader = TRUE,
-                    plotOutput("umapPlot")
+                box(title = "UMAP Plot", status = "primary", solidHeader = TRUE, width = 6, height = 600,
+                    plotOutput("umapPlot", height = "550")
+                ),
+                box(title = "Violin Plot", status = "primary", solidHeader = TRUE, width = 6, height = 600,
+                    plotOutput("violinPlot", height = "550")
                 )
               )
       ),
@@ -44,12 +47,12 @@ ui <- dashboardPage(
                 box(
                   title = "SpatPlot Parameters",
                   width = 4, status = "primary", solidHeader = TRUE,
-                  selectInput("color_by", "Color by:",
+                  selectInput("color_by_spat", "Color by:",
                               choices = c("Region", "Sex", "Age", "cell_types")),
                   actionButton("run_spattotal", "Run SpatPlot")
                 ),
-                box(title = "SpatPlot", status = "primary", solidHeader = TRUE,
-                    plotOutput("spattotalplot")
+                box(title = "SpatPlot", status = "primary", solidHeader = TRUE, width = 8, height = 600,
+                    plotOutput("spattotalplot", height = "550")
                 )
               )
       ),
@@ -58,12 +61,12 @@ ui <- dashboardPage(
                 box(
                   title = "SpatPlot Parameters",
                   width = 4, status = "primary", solidHeader = TRUE,
-                  selectInput("color_by", "Color by:",
+                  selectInput("sub_region", "Subregion by:",
                               choices = data_regions),
                   actionButton("run_spatregion", "Run SpatPlot")
                 ),
-                box(title = "SpatPlot", status = "primary", solidHeader = TRUE,
-                    plotOutput("spatregionplot")
+                box(title = "SpatPlot", status = "primary", solidHeader = TRUE,  width = 8, height = 600,
+                    plotOutput("spatregionplot", height = "550")
                 )
               )
       ),
@@ -74,7 +77,7 @@ ui <- dashboardPage(
       ),
       tabItem(tabName = "tab4",
               fluidRow(
-                box(plotOutput("plot4"), width = 12)
+                box(title = "Coming Soon", plotOutput("plot4"), width = 6)
               )
       ),
       tabItem(tabName = "tab5",
@@ -104,25 +107,30 @@ server <- function(input, output) {
              point_alpha = 0.7)
   })
   
+  output$violinPlot <- renderPlot({
+    req(input$run_umap) # Requiere que el botón Run UMAP sea presionado
+    violinPlot(subsetsg, feats = marker_genes, expression_values = 'scaled',
+               cluster_column = input$color_by)
+  })
+  
   output$spattotalplot <- renderPlot({
     req(input$run_spattotal)
     spatPlot2D(gobject = filtered_sg, point_alpha = 0.7,
-               cell_color = input$color_by, show_legend = TRUE)
+               cell_color = input$color_by_spat, show_legend = TRUE)
   })
   
   output$spatregionplot <- renderPlot({
     req(input$run_spatregion)
-    region <- input$color_by
+    region <- input$sub_region
     region_data = region_data_list[[region]]
     spatPlot2D(gobject = region_data, point_alpha = 0.7,
                cell_color = 'Subregion', show_legend = TRUE)
   })
   
   output$plot4 <- renderPlot({
-    req(data())
-    ggplot(data(), aes(x = Column7)) + 
-      geom_histogram(binwidth = 10) +
-      theme_minimal()
+    img_path <- "image.png" 
+    img <- png::readPNG(img_path)
+    grid::grid.raster(img)
   })
   
   output$plot5 <- renderPlot({
