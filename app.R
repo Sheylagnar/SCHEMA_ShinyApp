@@ -18,7 +18,10 @@ ui <- dashboardPage(
                menuSubItem("Region", tabName = "spatregion", icon = icon("angle-right"))
       ),
       menuItem("Heatmap", tabName = "heatmap", icon = icon("chart-pie")),
-      menuItem("Gráfico 4", tabName = "tab4", icon = icon("chart-area")),
+      menuItem("Correlation Bar Plot", icon = icon("chart-area"),
+               menuSubItem("Total", tabName = "cortotal", icon = icon("angle-right")),
+               menuSubItem("Region", tabName = "corregion", icon = icon("angle-right"))
+      ),
       menuItem("Gráfico 5", tabName = "tab5", icon = icon("chart-bar"))
     ),
     fileInput("file", "Upload your csv", accept = c(".csv"))
@@ -112,7 +115,7 @@ ui <- dashboardPage(
                     div(class = "plot-container",
                         div(class = "left-title", "ELS"),
                         div(class = "plot-output",
-                            plotOutput("heatmapPlot1", height = "370")
+                            plotOutput("heatmapPlot1", height = "375")
                         )
                     )
                 ),
@@ -120,22 +123,68 @@ ui <- dashboardPage(
                     div(class = "plot-container",
                         div(class = "left-title", "SR"),
                         div(class = "plot-output",
-                            plotOutput("heatmapPlot2", height = "370")
+                            plotOutput("heatmapPlot2", height = "375")
                         )
                     )
                 )
               )
       ),
-      tabItem(tabName = "tab4",
+      tabItem(tabName = "cortotal",
               fluidRow(
-                box(title = "Coming Soon", plotOutput("plot4"), width = 6,
-                    downloadButton("downloadPlot4", "Download Plot 4"))
+                box(
+                  title = "Parameters",
+                  width = 12, status = "primary", solidHeader = TRUE,
+                  selectInput("corplot_by", "Corplot by:",
+                              choices = c("Age", "Sex")),
+                  actionButton("run_corplot", "Generate Corplot"),
+                  downloadButton("downloadCorplotELS", "Download Plots ELS"),
+                  downloadButton("downloadCorplotSR", "Download Plots SR")
+                ),
+                box(width = 12, status = "primary", solidHeader = TRUE, height = 400,
+                    div(class = "plot-container",
+                        div(class = "left-title", "ELS"),
+                        div(class = "plot-output",
+                            plotOutput("corPlotELS", height = "370")
+                        )
+                    )
+                ),
+                box(width = 12, status = "primary", solidHeader = TRUE, height = 400,
+                    div(class = "plot-container",
+                        div(class = "left-title", "SR"),
+                        div(class = "plot-output",
+                            plotOutput("corPlotSR", height = "370")
+                        )
+                    )
+                )
               )
       ),
-      tabItem(tabName = "tab5",
+      tabItem(tabName = "corregion",
               fluidRow(
-                box(plotOutput("plot5"), width = 12,
-                    downloadButton("downloadPlot5", "Download Plot 5"))
+                box(
+                  title = "Parameters",
+                  width = 12, status = "primary", solidHeader = TRUE,
+                  selectInput("corplot_reg_by", "Corplot by:",
+                              choices = data_regions),
+                  actionButton("run_corplot_reg", "Generate Corplot"),
+                  downloadButton("downloadCorplotRegELS", "Download Plots ELS"),
+                  downloadButton("downloadCorplotRegSR", "Download Plots SR")
+                ),
+                box(width = 12, status = "primary", solidHeader = TRUE, height = 400,
+                    div(class = "plot-container",
+                        div(class = "left-title", "ELS"),
+                        div(class = "plot-output",
+                            plotOutput("corPlotRegELS", height = "370")
+                        )
+                    )
+                ),
+                box(width = 12, status = "primary", solidHeader = TRUE, height = 400,
+                    div(class = "plot-container",
+                        div(class = "left-title", "SR"),
+                        div(class = "plot-output",
+                            plotOutput("corPlotRegSR", height = "370")
+                        )
+                    )
+                )
               )
       )
     )
@@ -228,102 +277,123 @@ server <- function(input, output) {
   
   heatmap_plot1 <- reactive({
     req(input$run_heatmap)
-    if (input$heatmap_by == "Age") {
-      corr_list <- list(corr.p10_ELS, corr.p21_ELS, corr.p40_ELS)
-      titles <- c("P 10", "P 21", "P 40")
-    } else {
-      corr_list <- list(corr.male_ELS, corr.female_ELS)
-      titles <- c("M", "F")
-    }
-    list(corr_list = corr_list, titles = titles)
+    generate_correlations(df, "ELS", input$heatmap_by)
   })
   
   output$heatmapPlot1 <- renderPlot({
-    heatmap <- heatmap_plot1()
-    par(mfrow = c(1, length(heatmap$corr_list)), mar = c(5, 4, 4, 2) + 0.1)
-    for (i in 1:length(heatmap$corr_list)) {
-      corrplot(heatmap$corr_list[[i]], order = 'original', method = 'color', title = heatmap$titles[i])
-      title(main = titles[i], line = 3, cex.main = 1.5)
-    }
-    par(mfrow = c(1, 1))
+    heatmap_plot1()()
   })
   
   output$downloadHeatmap1 <- downloadHandler(
     filename = function() { paste("Heatmap_Plot1", Sys.Date(), ".png", sep="") },
     content = function(file) {
-      heatmap <- heatmap_plot1()
-      save_corrplot(file, heatmap$corr_list, heatmap$titles)
+      png(file)
+      heatmap_plot1()() # Llama a la misma función para generar el gráfico y guardarlo
+      dev.off()
     }
   )
   
   #HEATMAP SR
   heatmap_plot2 <- reactive({
     req(input$run_heatmap)
-    if (input$heatmap_by == "Age") {
-      corr_list <- list(corr.p10, corr.p21, corr.p40) # listas alternativas
-      titles <- c("P 10", "P 21", "P 40")
-    } else {
-      corr_list <- list(corr.male, corr.female) # listas alternativas
-      titles <- c("M", "F")
-    }
-    list(corr_list = corr_list, titles = titles)
+    generate_correlations(df, "SR", input$heatmap_by)
   })
-  
+
   output$heatmapPlot2 <- renderPlot({
-    heatmap <- heatmap_plot2()
-    par(mfrow = c(1, length(heatmap$corr_list)), mar = c(5, 4, 4, 2) + 0.1)
-    for (i in 1:length(heatmap$corr_list)) {
-      corrplot(heatmap$corr_list[[i]], order = 'original', method = 'color')
-      title(main = titles[i], line = 3, cex.main = 1.5)
-    }
-    par(mfrow = c(1, 1))
+    heatmap_plot2()()
   })
   
   output$downloadHeatmap2 <- downloadHandler(
     filename = function() { paste("Heatmap_Plot2", Sys.Date(), ".png", sep="") },
     content = function(file) {
-      heatmap <- heatmap_plot2()
-      save_corrplot(file, heatmap$corr_list, heatmap$titles)
-    }
-  )
-  
-  #IMAGE
-  output$plot4 <- renderPlot({
-    img_path <- "image.png" 
-    img <- png::readPNG(img_path)
-    grid::grid.raster(img)
-  })
-  
-  output$plot5 <- renderPlot({
-    req(data())
-    ggplot(data(), aes(x = Column8, y = Column9, color = Column10)) + 
-      geom_point() +
-      theme_minimal()
-  })
-  
-  # Handlers para descargar los gráficos usando ggsave
-
-  output$downloadPlot3 <- downloadHandler(
-    filename = function() { paste("Plot3", Sys.Date(), ".png", sep="") },
-    content = function(file) {
-      plot3 <- ggplot(data(), aes(x = Column8, y = Column9, color = Column10)) + 
-        geom_point() +
-        theme_minimal()
-      ggsave(file, plot = plot3)
-    }
-  )
-  
-  output$downloadPlot4 <- downloadHandler(
-    filename = function() { paste("Plot4", Sys.Date(), ".png", sep="") },
-    content = function(file) {
       png(file)
-      img_path <- "image.png" 
-      img <- png::readPNG(img_path)
-      grid::grid.raster(img)
+      heatmap_plot2()() # Llama a la misma función para generar el gráfico y guardarlo
       dev.off()
     }
   )
   
+  #CORPLOT TOTAL 
+  plot_ELS <- reactive({
+    req(input$run_corplot)
+    generate_plots(df, "ELS", input$corplot_by)
+  })
+  
+  output$corPlotELS <- renderPlot({
+    plot_ELS()
+  })
+  
+  output$downloadCorplotELS <- downloadHandler(
+    filename = function() {
+      paste("combined_plot_ELS_", input$corplot_by, ".png", sep = "")
+    },
+
+    content = function(file) {
+      ggsave(file, plot = plot_ELS(), width = 14, height = 7, units = "in", dpi = 300)
+    }
+  )
+  
+  #CORPLOT TOTAL SR
+  
+  plot_SR <- reactive({
+    req(input$run_corplot)
+    generate_plots(df, "SR", input$corplot_by)
+  })
+  
+  output$corPlotSR <- renderPlot({
+    plot_SR()
+  })
+  
+  output$downloadCorplotSR <- downloadHandler(
+    filename = function() {
+      paste("combined_plot_SR_", input$corplot_by, ".png", sep = "")
+    },
+    content = function(file) {
+      ggsave(file, plot = plot_SR(), width = 14, height = 7, units = "in", dpi = 300)
+    }
+  )
+
+  #  #CORPLOT BY REGION TOTAL 
+  plot_reg_ELS <- reactive({
+    req(input$run_corplot_reg)
+    generate_plots(df, "ELS", "Age", input$corplot_reg_by)
+  })
+  
+  output$corPlotRegELS <- renderPlot({
+    plot_reg_ELS()
+  })
+  
+  output$downloadCorplotRegELS <- downloadHandler(
+    filename = function() {
+      paste("combined_plot_ELS_reg_", input$corplot_by, ".png", sep = "")
+    },
+    
+    content = function(file) {
+      ggsave(file, plot = plot_ELS(), width = 14, height = 7, units = "in", dpi = 300)
+    }
+  )
+  
+  #CORPLOT TOTAL BY REGIION SR
+  
+  plot_reg_SR <- reactive({
+    req(input$run_corplot_reg)
+    generate_plots(df, "SR", "Age", input$corplot_reg_by)
+  })
+  
+  output$corPlotRegSR <- renderPlot({
+    plot_reg_SR()
+  })
+  
+  output$downloadCorplotRegSR <- downloadHandler(
+    filename = function() {
+      paste("combined_plot_SR_reg_", input$corplot_by, ".png", sep = "")
+    },
+    content = function(file) {
+      ggsave(file, plot = plot_SR(), width = 14, height = 7, units = "in", dpi = 300)
+    }
+  )
+  
+  # Handlers para descargar los gráficos usando ggsave
+
   output$downloadPlot5 <- downloadHandler(
     filename = function() { paste("Plot5", Sys.Date(), ".png", sep="") },
     content = function(file) {
@@ -336,3 +406,4 @@ server <- function(input, output) {
 }
 
 shinyApp(ui, server)
+
