@@ -22,7 +22,15 @@ ui <- dashboardPage(
                menuSubItem("Total", tabName = "cortotal", icon = icon("angle-right")),
                menuSubItem("Region", tabName = "corregion", icon = icon("angle-right"))
       ),
-      menuItem("Gráfico 5", tabName = "tab5", icon = icon("chart-bar"))
+      menuItem("Gene Expression Comparison", icon = icon("chart-bar"),
+               menuSubItem("Region", tabName = "comregion", icon = icon("angle-right")),
+               menuSubItem("Cell type", tabName = "comcelltype", icon = icon("angle-right"))
+      ),
+      menuItem("Dotplot", icon = icon("chart-bar"),
+               menuSubItem("Condition", tabName = "condotplot", icon = icon("angle-right")),
+               menuSubItem("Age", tabName = "agedotplot", icon = icon("angle-right")),
+               menuSubItem("Sex", tabName = "sexdotplot", icon = icon("angle-right"))
+      )
     ),
     fileInput("file", "Upload your csv", accept = c(".csv"))
   ),
@@ -186,6 +194,87 @@ ui <- dashboardPage(
                     )
                 )
               )
+      ),
+      tabItem(tabName = "comregion",
+              fluidRow(
+                box(
+                  title = "Parameters",
+                  width = 3, status = "primary", solidHeader = TRUE,
+                  selectInput("corregion_by", "Plot by:",
+                              choices = c("Age", "Sex")),
+                  actionButton("run_corregion", "Run Heatmap"),
+                  downloadButton("downloadcorregion", "Download Plot")
+                ),
+                box(title = "Comparison Heatmpat", status = "primary", solidHeader = TRUE, width = 9, height = 600,
+                    plotOutput("corregionplot", height = "550", width = "100%")
+                )
+              )
+      ),
+      tabItem(tabName = "comcelltype",
+              fluidRow(
+                box(
+                  title = "Parameters",
+                  width = 3, status = "primary", solidHeader = TRUE,
+                  selectInput("comcell_by", "Plot by:",
+                              choices = c("Age", "Sex")),
+                  actionButton("run_comcell", "Run Heatmap"),
+                  downloadButton("downloadcomcell", "Download Plot")
+                ),
+                box(title = "Comparison Heatmpat", status = "primary", solidHeader = TRUE, width = 9, height = 600,
+                    plotOutput("comcellplot", height = "550", width = "100%")
+                )
+              )
+      ),
+      tabItem(tabName = "condotplot",
+              fluidRow(
+                box(
+                  title = "Parameters",
+                  width = 3, status = "primary", solidHeader = TRUE,
+                  selectInput("gene_by", "Plot by gene:", choices = schema_genes),
+                  radioButtons("filter_by", "Filter by:", choices = c("Sex", "Age", "All")),
+                  conditionalPanel(
+                    condition = "input.filter_by == 'Sex'",
+                    selectInput("sex", "Select Sex:", choices = c("F", "M"))
+                  ),
+                  conditionalPanel(
+                    condition = "input.filter_by == 'Age'",
+                    selectInput("age", "Select Age:", choices = c(10, 21, 40, 90))
+                  ),
+                  actionButton("run_condotplot", "Run Dotplot"),
+                  downloadButton("downloadcondotplot", "Download Plot")
+                ),
+                box(title = "Dotplot", status = "primary", solidHeader = TRUE, width = 9, height = 600,
+                    plotOutput("condotPlot", height = "550", width = "100%")
+                )
+              )
+      ),
+      tabItem(tabName = "sexdotplot",
+              fluidRow(
+                box(
+                  title = "Parameters",
+                  width = 3, status = "primary", solidHeader = TRUE,
+                  selectInput("gene_by", "Plot by gene:", choices = schema_genes),
+                  selectInput("filter_by", "Filter by:",
+                              choices = c("All", "Age", "Condition"), selected = "All"),
+                  conditionalPanel(
+                    condition = "input.filter_by == 'Age'",
+                    selectInput("age", "Select Age:", choices = c(10, 21, 40, 90), selected = 10),
+                    selectInput("additional_filter_age", "Additional Filter:",
+                                choices = c("None", "ELS", "SR"), selected = "None")
+                  ),
+                  conditionalPanel(
+                    condition = "input.filter_by == 'Condition'",
+                    selectInput("condition", "Select Condition:", choices = c("ELS", "SR"), selected = "Condition1"),
+                    selectInput("additional_filter_condition", "Additional Filter:",
+                                choices = c("None", 10, 21, 40, 90), selected = "None")
+                  ),
+                  actionButton("run_sexdotplot", "Run Dotplot"),
+                  downloadButton("downloadsexdotplot", "Download Plot")
+                ),
+                box(title = "Dotplot", status = "primary", solidHeader = TRUE, width = 9, height = 600,
+                    plotOutput("sexdotPlot", height = "550", width = "100%")
+                )
+              )
       )
     )
   )
@@ -193,11 +282,12 @@ ui <- dashboardPage(
 # Define server logic required to draw a histogram
 
 server <- function(input, output) {
-  data <- reactive({
+  dtbs <- reactive({
     req(input$file)
     read_csv(input$file$datapath)
   })
   
+  #UMAP
   umap_plot <- reactive({
     req(input$run_umap)
     plotUMAP(gobject = subsetsg,
@@ -392,15 +482,111 @@ server <- function(input, output) {
     }
   )
   
-  # Handlers para descargar los gráficos usando ggsave
+  # COMPARISON PHEATMAP REGION 
 
-  output$downloadPlot5 <- downloadHandler(
-    filename = function() { paste("Plot5", Sys.Date(), ".png", sep="") },
+  plot_comheat <- reactive({
+    req(input$run_corregion)
+    generate_combined_heatmaps(data, schema_genes, input$corregion_by, "Region")
+  })
+  
+  output$corregionplot <- renderPlot({
+    plot_comheat()
+  })
+  
+  output$downloadcorregion <- downloadHandler(
+    filename = function() {
+      paste("comparison_heatmap_reg_", input$corregion_by, ".png", sep = "")
+    },
     content = function(file) {
-      plot5 <- ggplot(data(), aes(x = Column8, y = Column9, color = Column10)) + 
-        geom_point() +
-        theme_minimal()
-      ggsave(file, plot = plot5)
+      ggsave(file, plot = plot_comheat(), width = 14, height = 7, units = "in", dpi = 300)
+    }
+  )
+  
+  
+  # COMPARISON PHEATMAP CELLTYPE 
+  
+  plot_comheat_cell <- reactive({
+    req(input$run_comcell)
+    generate_combined_heatmaps(data, schema_genes, input$comcell_by, "cell_types")
+  })
+  
+  output$comcellplot <- renderPlot({
+    plot_comheat_cel()
+  })
+  
+  output$downloadcorregion <- downloadHandler(
+    filename = function() {
+      paste("comparison_heatmap_reg_", input$comcell_by, ".png", sep = "")
+    },
+    content = function(file) {
+      ggsave(file, plot = plot_comheat_cel(), width = 14, height = 7, units = "in", dpi = 300)
+    }
+  )
+  
+  # CONDITIONS DOTPLOT  
+  
+  plot_condot <- reactive({
+    req(input$run_condotplot)
+    age <- NULL
+    sex <- NULL
+    
+    if (input$filter_by == "Sex") {
+      sex <- input$sex  # Asigna el sexo seleccionado por el usuario
+    } else if (input$filter_by == "Age") {
+      age <- input$age # Asigna la edad seleccionada por el usuario
+    } else if (input$filter_by == "All") {
+      age <- NULL
+      sex <- NULL
+    }
+    
+    generate_fold_change_plot(original_data, input$gene_by, "Condition", "ELS", "SR", age, sex)
+  })
+  
+  output$condotPlot <- renderPlot({
+    plot_condot()
+  })
+  
+  output$downloadcondotplot <- downloadHandler(
+    filename = function() {
+      paste("fold_change_plot_", input$gene_by, ".png", sep = "")
+    },
+    content = function(file) {
+      ggsave(file, plot = plot_condot(), width = 14, height = 7, units = "in", dpi = 300)
+    }
+  )
+  
+  # SEX DOTPLOT  
+  
+  plot_sexdot <- reactive({
+    req(input$run_sexdotplot)
+    age <- NULL
+    condition <- NULL
+    
+    if (input$filter_by == "Age") {
+      age <- input$age  # Asigna la edad seleccionada por el usuario
+      if (input$additional_filter_age != "None") {
+        condition <- input$additional_filter_age  # Asigna la condición adicional seleccionada por el usuario
+      }
+    } else if (input$filter_by == "Condition") {
+      condition <- input$condition  # Asigna la condición seleccionada por el usuario
+      if (input$additional_filter_condition != "None") {
+        age <- input$additional_filter_condition  # Asigna la edad adicional seleccionada por el usuario
+      }
+    }
+    
+    generate_fold_change_plot(original_data, input$gene_by, "Sex", "F", "M", age, sex= NULL, condition)
+  })
+  
+  output$sexdotPlot <- renderPlot({
+    plot_sexdot()
+  })
+  
+  output$downloadcondotplot <- downloadHandler(
+    filename = function() {
+      paste("fold_change_plot_", input$gene_by, ".png", sep = "")
+    },
+    content = function(file) {
+      ggsave(file, plot = plot_condot(), width = 14, height = 7, units = "in", dpi = 300)
     }
   )
 }
