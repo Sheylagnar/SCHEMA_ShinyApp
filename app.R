@@ -28,8 +28,11 @@ ui <- dashboardPage(
       ),
       menuItem("Dotplot", icon = icon("chart-bar"),
                menuSubItem("Condition", tabName = "condotplot", icon = icon("angle-right")),
-               menuSubItem("Age", tabName = "agedotplot", icon = icon("angle-right")),
-               menuSubItem("Sex", tabName = "sexdotplot", icon = icon("angle-right"))
+               menuSubItem("Sex", tabName = "sexdotplot", icon = icon("angle-right")),
+               menuSubItem("Age", tabName = "agedotplot", icon = icon("angle-right"))
+               
+      ),
+      menuItem("Dispersion",tabName = "disp", icon = icon("chart-bar")
       )
     ),
     fileInput("file", "Upload your csv", accept = c(".csv"))
@@ -229,7 +232,25 @@ ui <- dashboardPage(
               fluidRow(
                 box(
                   title = "Parameters",
-                  width = 3, status = "primary", solidHeader = TRUE,
+                  width = 4, status = "primary", solidHeader = TRUE,
+                  radioButtons("total_filter_by", "Filter by:", choices = c("Sex", "Age", "All")),
+                  conditionalPanel(
+                    condition = "input.total_filter_by == 'Sex'",
+                    selectInput("total_sex", "Select Sex:", choices = c("F", "M"))
+                  ),
+                  conditionalPanel(
+                    condition = "input.total_filter_by == 'Age'",
+                    selectInput("total_age", "Select Age:", choices = c(10, 21, 40, 90))
+                  ),
+                  actionButton("run_total_condotplot", "Run Dotplot"),
+                  downloadButton("downloadtotalcondotplot", "Download Plot")
+                ),
+                box(title = "Dotplot", status = "primary", solidHeader = TRUE, width = 8, height = 400,
+                    plotOutput("condottotalPlot", height = "350", width = "100%")
+                ), 
+                box(
+                  title = "Parameters",
+                  width = 4, status = "primary", solidHeader = TRUE,
                   selectInput("gene_by", "Plot by gene:", choices = schema_genes),
                   radioButtons("filter_by", "Filter by:", choices = c("Sex", "Age", "All")),
                   conditionalPanel(
@@ -243,8 +264,8 @@ ui <- dashboardPage(
                   actionButton("run_condotplot", "Run Dotplot"),
                   downloadButton("downloadcondotplot", "Download Plot")
                 ),
-                box(title = "Dotplot", status = "primary", solidHeader = TRUE, width = 9, height = 600,
-                    plotOutput("condotPlot", height = "550", width = "100%")
+                box(title = "Dotplot", status = "primary", solidHeader = TRUE, width = 8, height = 400,
+                    plotOutput("condotPlot", height = "350", width = "100%")
                 )
               )
       ),
@@ -252,9 +273,27 @@ ui <- dashboardPage(
               fluidRow(
                 box(
                   title = "Parameters",
-                  width = 3, status = "primary", solidHeader = TRUE,
+                  width = 4, status = "primary", solidHeader = TRUE,
+                  radioButtons("total_filter_by", "Filter by:", choices = c("Condition", "Age", "All")),
+                  conditionalPanel(
+                    condition = "input.total_filter_by == 'Condition'",
+                    selectInput("total_condition", "Select Condition:", choices = c("ELS", "SR"))
+                  ),
+                  conditionalPanel(
+                    condition = "input.total_filter_by == 'Age'",
+                    selectInput("total_age", "Select Age:", choices = c(10, 21, 40, 90))
+                  ),
+                  actionButton("run_total_sexdotplot", "Run Dotplot"),
+                  downloadButton("downloadtotalsexdotplot", "Download Plot")
+                ),
+                box(title = "Dotplot", status = "primary", solidHeader = TRUE, width = 8, height = 400,
+                    plotOutput("sexdottotalPlot", height = "350", width = "100%")
+                ), 
+                box(
+                  title = "Parameters",
+                  width = 4, status = "primary", solidHeader = TRUE,
                   selectInput("gene_by", "Plot by gene:", choices = schema_genes),
-                  selectInput("filter_by", "Filter by:",
+                  radioButtons("filter_by", "Filter by:",
                               choices = c("All", "Age", "Condition"), selected = "All"),
                   conditionalPanel(
                     condition = "input.filter_by == 'Age'",
@@ -271,8 +310,78 @@ ui <- dashboardPage(
                   actionButton("run_sexdotplot", "Run Dotplot"),
                   downloadButton("downloadsexdotplot", "Download Plot")
                 ),
-                box(title = "Dotplot", status = "primary", solidHeader = TRUE, width = 9, height = 600,
-                    plotOutput("sexdotPlot", height = "550", width = "100%")
+                box(title = "Dotplot", status = "primary", solidHeader = TRUE, width = 8, height = 400,
+                    plotOutput("sexdotPlot", height = "350", width = "100%")
+                )
+              )
+      ),
+      tabItem(tabName = "agedotplot",
+              fluidRow(
+                box(
+                  title = "Parameters",
+                  width = 4, status = "primary", solidHeader = TRUE,
+                  fluidRow(
+                    column(6, selectInput("age_group_1_by", "Age 1:", choices = c(10, 21, 40, 90))),
+                    column(6, selectInput("age_group_2_by", "Age 2:", choices = c(10, 21, 40, 90)))
+                  ),
+                  radioButtons("total_filter_by", "Filter by:", choices = c("Condition", "Sex", "All")),
+                  conditionalPanel(
+                    condition = "input.total_filter_by == 'Condition'",
+                    selectInput("total_condition", "Select Condition:", choices = c("ELS", "SR"))
+                  ),
+                  conditionalPanel(
+                    condition = "input.total_filter_by == 'Sex'",
+                    selectInput("total_age", "Select Age:", choices = c("M", "F"))
+                  ),
+                  actionButton("run_total_agedotplot", "Run Dotplot"),
+                  downloadButton("downloadtotalagedotplot", "Download Plot")
+                ),
+                box(title = "Dotplot", status = "primary", solidHeader = TRUE, width = 8, height = 400,
+                    plotOutput("agedottotalPlot", height = "350", width = "100%")
+                ),    
+                box(
+                  title = "Parameters",
+                  width = 4, status = "primary", solidHeader = TRUE,
+                  selectInput("gene_by", "Plot by gene:", choices = schema_genes),
+                  fluidRow(
+                    column(6, selectInput("group_1_by", "Age 1:", choices = c(10, 21, 40, 90))),
+                    column(6, selectInput("group_2_by", "Age 2:", choices = c(10, 21, 40, 90)))
+                  ),
+                  radioButtons("filter_by", "Filter by:",
+                              choices = c("Sex", "Condition", "All"), selected = "Sex"),
+                  conditionalPanel(
+                    condition = "input.filter_by == 'Sex'",
+                    selectInput("sex", "Select Sex:", choices = c("M", "F"), selected = "M"),
+                    selectInput("additional_filter_age", "Additional Filter:",
+                                choices = c("None", "ELS", "SR"), selected = "None")
+                  ),
+                  conditionalPanel(
+                    condition = "input.filter_by == 'Condition'",
+                    selectInput("condition", "Select Condition:", choices = c("ELS", "SR"), selected = "Condition1"),
+                    selectInput("additional_filter_condition", "Additional Filter:",
+                                choices = c("None", "M", "F"), selected = "None")
+                  ),
+                  actionButton("run_agedotplot", "Run Dotplot"),
+                  downloadButton("downloadagedotplot", "Download Plot")
+                ),
+                box(title = "Dotplot", status = "primary", solidHeader = TRUE, width = 8, height = 400,
+                    plotOutput("agedotPlot", height = "350", width = "100%")
+                )
+              )
+      ),
+      tabItem(tabName = "disp",
+              fluidRow(
+                box(
+                  title = "Disp Parameters",
+                  width = 4, status = "primary", solidHeader = TRUE,
+                  selectInput("gene_by", "Plot by gene:", choices = schema_genes),
+                  radioButtons("col_by", "Color by:",
+                              choices =  c("Region", "foldchange")),
+                  actionButton("run_disp", "Run DispPlot"),
+                  downloadButton("downloadDispPlot", "Download Disp Plot")
+                ),
+                box(title = "DispPlot", status = "primary", solidHeader = TRUE, width = 8, height = 600,
+                    plotOutput("displot", height = "550")
                 )
               )
       )
@@ -402,7 +511,7 @@ server <- function(input, output) {
     }
   )
   
-  #CORPLOT TOTAL 
+  #CORBARPLOT TOTAL 
   plot_ELS <- reactive({
     req(input$run_corplot)
     generate_plots(df, "ELS", input$corplot_by)
@@ -511,7 +620,7 @@ server <- function(input, output) {
   })
   
   output$comcellplot <- renderPlot({
-    plot_comheat_cel()
+    plot_comheat_cell()
   })
   
   output$downloadcorregion <- downloadHandler(
@@ -523,7 +632,41 @@ server <- function(input, output) {
     }
   )
   
-  # CONDITIONS DOTPLOT  
+
+  # CONDITIONS TOTAL DOTPLOT  
+  
+  plot_contotaldot <- reactive({
+    req(input$run_total_condotplot)
+    age <- NULL
+    sex <- NULL
+    
+    if (input$total_filter_by == "Sex") {
+      sex <- input$total_sex  # Asigna el sexo seleccionado por el usuario
+    } else if (input$total_filter_by == "Age") {
+      age <- input$total_age # Asigna la edad seleccionada por el usuario
+    } else if (input$total_filter_by == "All") {
+      age <- NULL
+      sex <- NULL
+    }
+    
+    generate_fold_change_plots(original_data, schema_genes, "Condition", "ELS", "SR", NULL, age, sex)
+    
+  })
+  
+  output$condottotalPlot <- renderPlot({
+    plot_contotaldot()
+  })
+  
+  output$downloadtotalcondotplot <- downloadHandler(
+    filename = function() {
+      paste("fold_change_plot_", input$gene_by, ".png", sep = "")
+    },
+    content = function(file) {
+      ggsave(file, plot = plot_condot(), width = 14, height = 7, units = "in", dpi = 300)
+    }
+  )
+  
+  # CONDITIONS GEN DOTPLOT  
   
   plot_condot <- reactive({
     req(input$run_condotplot)
@@ -539,7 +682,8 @@ server <- function(input, output) {
       sex <- NULL
     }
     
-    generate_fold_change_plot(original_data, input$gene_by, "Condition", "ELS", "SR", age, sex)
+    generate_fold_change_plots(original_data, NULL, "Condition", "ELS", "SR", input$gene_by, age, sex)
+    
   })
   
   output$condotPlot <- renderPlot({
@@ -555,7 +699,38 @@ server <- function(input, output) {
     }
   )
   
-  # SEX DOTPLOT  
+  # SEX TOTAL DOTPLOT
+  plot_sextotaldot <- reactive({
+    req(input$run_total_sexdotplot)
+    age <- NULL
+    condition <- NULL
+    
+    if (input$total_filter_by == "Condition") {
+      condition <- input$total_condition  # Asigna el sexo seleccionado por el usuario
+    } else if (input$total_filter_by == "Age") {
+      age <- input$total_age # Asigna la edad seleccionada por el usuario
+    } else if (input$total_filter_by == "All") {
+      condition <- NULL
+      age <- NULL
+    }
+    
+    generate_fold_change_plots(original_data, schema_genes, "Sex", "F", "M", NULL, age, NULL, condition)
+    
+  })
+  
+  output$sexdottotalPlot <- renderPlot({
+    plot_sextotaldot()
+  })
+  
+  output$downloadtotalsexdotplot <- downloadHandler(
+    filename = function() {
+      paste("fold_change_plot_", input$gene_by, ".png", sep = "")
+    },
+    content = function(file) {
+      ggsave(file, plot = plot_condot(), width = 14, height = 7, units = "in", dpi = 300)
+    }
+  )
+  # SEX GEN DOTPLOT  
   
   plot_sexdot <- reactive({
     req(input$run_sexdotplot)
@@ -573,20 +748,108 @@ server <- function(input, output) {
         age <- input$additional_filter_condition  # Asigna la edad adicional seleccionada por el usuario
       }
     }
-    
-    generate_fold_change_plot(original_data, input$gene_by, "Sex", "F", "M", age, sex= NULL, condition)
+
+    generate_fold_change_plots(original_data, NULL, "Sex", "F", "M", input$gene_by, age, NULL, condition)
   })
   
   output$sexdotPlot <- renderPlot({
     plot_sexdot()
   })
   
-  output$downloadcondotplot <- downloadHandler(
+  output$downloadsexdotplot <- downloadHandler(
+    filename = function() {
+      paste("fold_change_plot_", input$gene_by, ".png", sep = "")
+    },
+    content = function(file) {
+      ggsave(file, plot = plot_sexdot(), width = 14, height = 7, units = "in", dpi = 300)
+    }
+  )
+
+#   AGE TOTAL DOTPLOT   
+  
+  plot_agetotaldot <- reactive({
+    req(input$run_total_agedotplot)
+    condition <- NULL
+    sex <- NULL
+    
+    if (input$total_filter_by == "Condition") {
+      condition <- input$total_condition  # Asigna el sexo seleccionado por el usuario
+    } else if (input$total_filter_by == "Sex") {
+      sex <- input$total_sex # Asigna la edad seleccionada por el usuario
+    } else if (input$total_filter_by == "All") {
+      condition <- NULL
+      age <- NULL
+    }
+    
+    generate_fold_change_plots(original_data, schema_genes, "Age", input$age_group_1_by, input$age_group_2_by, NULL, NULL, sex, condition)
+    
+  })
+  
+  output$agedottotalPlot <- renderPlot({
+    plot_agetotaldot()
+  })
+  
+  output$downloadtotalagedotplot <- downloadHandler(
     filename = function() {
       paste("fold_change_plot_", input$gene_by, ".png", sep = "")
     },
     content = function(file) {
       ggsave(file, plot = plot_condot(), width = 14, height = 7, units = "in", dpi = 300)
+    }
+  )
+#   AGE GEN DOTPLOT  
+  
+  plot_agedot <- reactive({
+    req(input$run_agedotplot)
+    sex <- NULL
+    condition <- NULL
+    
+    if (input$filter_by == "Sex") {
+      sex <- input$sex  # Asigna la edad seleccionada por el usuario
+      if (input$additional_filter_age != "None") {
+        condition <- input$additional_filter_age  # Asigna la condición adicional seleccionada por el usuario
+      }
+    } else if (input$filter_by == "Condition") {
+      condition <- input$condition  # Asigna la condición seleccionada por el usuario
+      if (input$additional_filter_condition != "None") {
+        sex <- input$additional_filter_condition  # Asigna la edad adicional seleccionada por el usuario
+      }
+    }
+    
+    generate_fold_change_plots(original_data, NULL, "Age", input$group_1_by, input$group_2_by, input$gene_by, NULL, sex, condition)
+    
+  })
+  
+  output$agedotPlot <- renderPlot({
+    plot_agedot()
+  })
+  
+  output$downloadagedotplot <- downloadHandler(
+    filename = function() {
+      paste("fold_change_plot_", input$gene_by, ".png", sep = "")
+    },
+    content = function(file) {
+      ggsave(file, plot = plot_agedot(), width = 14, height = 7, units = "in", dpi = 300)
+    }
+  )
+  
+  # DISPLOT 
+  
+  plot_dispersion <- reactive({
+    req(input$run_disp)
+    plot_gene_expression(data, input$gene_by, input$col_by)
+  })
+  
+  output$displot <- renderPlot({
+    plot_dispersion ()
+  })
+  
+  output$downloadDispPlot <- downloadHandler(
+    filename = function() {
+      paste("displot_", input$gene_by, ".png", sep = "")
+    },
+    content = function(file) {
+      ggsave(file, plot = plot_dispersion(), width = 14, height = 7, units = "in", dpi = 300)
     }
   )
 }
