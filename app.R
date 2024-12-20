@@ -1,8 +1,7 @@
+source("functions_spatial_rnaseq.R")
 library(shiny)
 library(shinydashboard)
-library(readr)
-library(ggplot2)
-library(Giotto)
+
 #cargar RDATA de spatial transcriptomic y path con 
 #setwd()
 
@@ -33,6 +32,8 @@ ui <- dashboardPage(
                
       ),
       menuItem("Dispersion",tabName = "disp", icon = icon("chart-bar")
+      ),
+      menuItem("Area heatmap",tabName = "area", icon = icon("chart-bar")
       )
     ),
     fileInput("file", "Upload your csv", accept = c(".csv"))
@@ -58,6 +59,7 @@ ui <- dashboardPage(
         }
         .plot-output {
           flex-grow: 1;
+          height: 100% !important; /* Asegura que el plotOutput use todo el espacio */
         }
       "))
     ),
@@ -381,7 +383,28 @@ ui <- dashboardPage(
                   downloadButton("downloadDispPlot", "Download Disp Plot")
                 ),
                 box(title = "DispPlot", status = "primary", solidHeader = TRUE, width = 8, height = 600,
-                    plotOutput("displot", height = "550")
+                    plotOutput("displot", height = "550"),
+                )
+              )
+      ), 
+      tabItem(tabName = "area",
+              fluidRow(
+                box(
+                  title = "Area Parameters",
+                  width = 4, status = "primary", solidHeader = TRUE,
+                  selectInput("gene_by", "Plot by gene:", choices = schema_genes),
+                  selectInput("region_by", "Plot by region:", choices = data_regions),
+                  selectInput("con_by", "Plot by condition:", choices = c("ELS", "SR")),
+                  radioButtons("col_by", "Color by:",
+                               choices =  c("Age", "Sex")),
+                  actionButton("run_area", "Run AreaPlot"),
+                  downloadButton("downloadAreaPlot", "Download Area Plot")
+                ),
+                box(title = "Percentage Heatmap", status = "primary", solidHeader = TRUE, width = 8, height = 405,
+                    plotOutput("percheat", height = "350")
+                ),
+                box(title = "Puncta Heatmaps", status = "primary", solidHeader = TRUE, width = 12, height = 405,
+                    plotOutput("punctheat", height = '350')
                 )
               )
       )
@@ -476,7 +499,7 @@ server <- function(input, output) {
   
   heatmap_plot1 <- reactive({
     req(input$run_heatmap)
-    generate_correlations(df, "ELS", input$heatmap_by)
+    generate_correlations(data_harm_scaled, "ELS", input$heatmap_by)
   })
   
   output$heatmapPlot1 <- renderPlot({
@@ -495,7 +518,7 @@ server <- function(input, output) {
   #HEATMAP SR
   heatmap_plot2 <- reactive({
     req(input$run_heatmap)
-    generate_correlations(df, "SR", input$heatmap_by)
+    generate_correlations(data_harm_scaled, "SR", input$heatmap_by)
   })
 
   output$heatmapPlot2 <- renderPlot({
@@ -514,7 +537,7 @@ server <- function(input, output) {
   #CORBARPLOT TOTAL 
   plot_ELS <- reactive({
     req(input$run_corplot)
-    generate_plots(df, "ELS", input$corplot_by)
+    generate_plots(data_harm_raw, "ELS", input$corplot_by)
   })
   
   output$corPlotELS <- renderPlot({
@@ -535,7 +558,7 @@ server <- function(input, output) {
   
   plot_SR <- reactive({
     req(input$run_corplot)
-    generate_plots(df, "SR", input$corplot_by)
+    generate_plots(data_harm_raw, "SR", input$corplot_by)
   })
   
   output$corPlotSR <- renderPlot({
@@ -554,7 +577,7 @@ server <- function(input, output) {
   #  #CORPLOT BY REGION TOTAL 
   plot_reg_ELS <- reactive({
     req(input$run_corplot_reg)
-    generate_plots(df, "ELS", "Age", input$corplot_reg_by)
+    generate_plots(data_harm_raw, "ELS", "Age", input$corplot_reg_by)
   })
   
   output$corPlotRegELS <- renderPlot({
@@ -575,7 +598,7 @@ server <- function(input, output) {
   
   plot_reg_SR <- reactive({
     req(input$run_corplot_reg)
-    generate_plots(df, "SR", "Age", input$corplot_reg_by)
+    generate_plots(data_harm_raw, "SR", "Age", input$corplot_reg_by)
   })
   
   output$corPlotRegSR <- renderPlot({
@@ -595,7 +618,7 @@ server <- function(input, output) {
 
   plot_comheat <- reactive({
     req(input$run_corregion)
-    generate_combined_heatmaps(data, schema_genes, input$corregion_by, "Region")
+    generate_combined_heatmaps(data_harm_scaled, schema_genes, input$corregion_by, "Region")
   })
   
   output$corregionplot <- renderPlot({
@@ -616,7 +639,7 @@ server <- function(input, output) {
   
   plot_comheat_cell <- reactive({
     req(input$run_comcell)
-    generate_combined_heatmaps(data, schema_genes, input$comcell_by, "cell_types")
+    generate_combined_heatmaps(data_harm_scaled, schema_genes, input$comcell_by, "cell_types")
   })
   
   output$comcellplot <- renderPlot({
@@ -649,7 +672,7 @@ server <- function(input, output) {
       sex <- NULL
     }
     
-    generate_fold_change_plots(original_data, schema_genes, "Condition", "ELS", "SR", NULL, age, sex)
+    generate_fold_change_plots(data_harm_scaled, schema_genes, "Condition", "ELS", "SR", NULL, age, sex)
     
   })
   
@@ -682,7 +705,7 @@ server <- function(input, output) {
       sex <- NULL
     }
     
-    generate_fold_change_plots(original_data, NULL, "Condition", "ELS", "SR", input$gene_by, age, sex)
+    generate_fold_change_plots(data_harm_scaled, NULL, "Condition", "ELS", "SR", input$gene_by, age, sex)
     
   })
   
@@ -714,7 +737,7 @@ server <- function(input, output) {
       age <- NULL
     }
     
-    generate_fold_change_plots(original_data, schema_genes, "Sex", "F", "M", NULL, age, NULL, condition)
+    generate_fold_change_plots(data_harm_scaled, schema_genes, "Sex", "F", "M", NULL, age, NULL, condition)
     
   })
   
@@ -749,7 +772,7 @@ server <- function(input, output) {
       }
     }
 
-    generate_fold_change_plots(original_data, NULL, "Sex", "F", "M", input$gene_by, age, NULL, condition)
+    generate_fold_change_plots(data_harm_scaled, NULL, "Sex", "F", "M", input$gene_by, age, NULL, condition)
   })
   
   output$sexdotPlot <- renderPlot({
@@ -781,7 +804,7 @@ server <- function(input, output) {
       age <- NULL
     }
     
-    generate_fold_change_plots(original_data, schema_genes, "Age", input$age_group_1_by, input$age_group_2_by, NULL, NULL, sex, condition)
+    generate_fold_change_plots(data_harm_scaled, schema_genes, "Age", input$age_group_1_by, input$age_group_2_by, NULL, NULL, sex, condition)
     
   })
   
@@ -816,7 +839,7 @@ server <- function(input, output) {
       }
     }
     
-    generate_fold_change_plots(original_data, NULL, "Age", input$group_1_by, input$group_2_by, input$gene_by, NULL, sex, condition)
+    generate_fold_change_plots(data_harm_scaled, NULL, "Age", input$group_1_by, input$group_2_by, input$gene_by, NULL, sex, condition)
     
   })
   
@@ -837,7 +860,7 @@ server <- function(input, output) {
   
   plot_dispersion <- reactive({
     req(input$run_disp)
-    plot_gene_expression(data, input$gene_by, input$col_by)
+    plot_gene_expression(data_harm_scaled, input$gene_by, input$col_by)
   })
   
   output$displot <- renderPlot({
@@ -852,7 +875,49 @@ server <- function(input, output) {
       ggsave(file, plot = plot_dispersion(), width = 14, height = 7, units = "in", dpi = 300)
     }
   )
+
+
+# AREA HAE PERC 
+
+plot_area <- reactive({
+  req(input$run_area)
+  generate_heatmap_area(data, input$region_by, input$con_by, input$gene_by, input$col_by, "Percent")
+})
+
+output$percheat <- renderPlot({
+  plot_area ()
+})
+
+output$downloadAreaPlot <- downloadHandler(
+  filename = function() {
+    paste("area_", input$gene_by, ".png", sep = "")
+  },
+  content = function(file) {
+    ggsave(file, plot = plot_area(), width = 14, height = 7, units = "in", dpi = 300)
+  }
+)
+
+# AREA HAE PUNCTA
+
+plot_area_pun <- reactive({
+  req(input$run_area)
+  generate_heatmap_area(data, input$region_by, input$con_by, input$gene_by, input$col_by, "Puncta")
+})
+
+output$punctheat <- renderPlot({
+  plot_area_pun ()
+})
+
+output$downloadAreaPlot <- downloadHandler(
+  filename = function() {
+    paste("area_", input$gene_by, ".png", sep = "")
+  },
+  content = function(file) {
+    ggsave(file, plot = plot_area(), width = 14, height = 7, units = "in", dpi = 300)
+  }
+)
 }
+
 
 shinyApp(ui, server)
 
